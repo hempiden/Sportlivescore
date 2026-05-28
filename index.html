@@ -3,172 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KH Gameday 2026</title>
+    <title>DHL Games Day - Scoreboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        body { background-color: #05070a; color: white; font-family: 'Kantumruy Pro', sans-serif; }
-        .oswald { font-family: 'Oswald', sans-serif; }
+        :root { --dhl-yellow: #FFCC00; --dhl-red: #D40511; }
+        body { background-color: #f4f4f4; font-family: 'Kantumruy Pro', sans-serif; }
+        .font-dhl { font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; }
         
-        /* Hero Background */
-        .hero-section {
-            background: linear-gradient(to bottom, rgba(5, 7, 10, 0.2), #05070a), 
-                        url('https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2000&auto=format&fit=crop');
-            background-size: cover;
-            background-position: center;
+        /* Checkerboard Pattern */
+        .checker-bg {
+            background-image: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #f0f0f0 75%), linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
 
-        .neon-text { color: #ff005c; text-shadow: 0 0 15px rgba(255, 0, 92, 0.7); }
-        .neon-box { border: 1px solid rgba(255, 0, 92, 0.3); box-shadow: 0 0 20px rgba(255, 0, 92, 0.1); }
-        
-        .vs-badge {
-            background: #ff005c;
-            clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
+        .hero-gradient {
+            background: var(--dhl-yellow);
+            border-bottom: 8px solid var(--dhl-red);
         }
-
-        /* Bracket Line */
-        .bracket-connector {
-            position: absolute;
-            border-color: #ff005c;
-            border-width: 2px;
-        }
+        .vs-tag { background: var(--dhl-red); color: white; clip-path: polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%); }
+        .bracket-card { border-left: 6px solid var(--dhl-red); background: white; }
     </style>
 </head>
-<body class="pb-20">
+<body>
 
     <!-- Header -->
-    <nav class="p-6 flex justify-between items-center bg-black/50 backdrop-blur-md sticky top-0 z-50 border-b border-white/10">
-        <div class="flex items-center gap-2">
-            <div class="bg-pink-600 text-white font-black px-2 py-1 italic oswald">KH Games Day 2026</div>
+    <header class="bg-white p-4 flex justify-between items-center shadow-sm border-b-4 border-[#FFCC00]">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/DHL_Logo.svg/1200px-DHL_Logo.svg.png" class="h-6" alt="DHL">
+        <div class="text-center">
+            <div class="text-[#D40511] font-black italic text-xl leading-none font-dhl">GAMES DAY</div>
+            <div class="text-[10px] font-bold tracking-[0.2em]">#GAMEONASONE</div>
         </div>
-        <div class="text-xs font-bold uppercase tracking-widest flex gap-6">
-            <span class="text-pink-600">● Live Score</span>
-            <span class="opacity-50">Tournament</span>
-            <span class="opacity-50">Schedule</span>
-        </div>
-    </nav>
+        <div class="bg-[#D40511] text-white text-[10px] px-3 py-1 font-bold rounded">LIVE</div>
+    </header>
 
-    <!-- HERO SECTION: ACTIVE GAME -->
-    <section class="hero-section min-h-[60vh] flex items-center justify-center px-4 relative">
-        <div class="text-center max-w-4xl w-full">
-            <div class="inline-block bg-pink-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-6 animate-pulse">
-                Live Match
+    <!-- Hero: Active Match -->
+    <section class="hero-gradient py-12 px-4 text-center relative overflow-hidden">
+        <div class="container mx-auto relative z-10">
+            <h2 class="font-dhl text-4xl md:text-6xl italic mb-8 tracking-tighter">Active Match</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16">
+                <div class="text-3xl md:text-5xl font-dhl italic" id="hero-t1">TEAM A</div>
+                <div class="bg-black text-[#FFCC00] text-6xl md:text-8xl font-dhl px-8 py-4 rounded-xl shadow-2xl" id="hero-score">0 : 0</div>
+                <div class="text-3xl md:text-5xl font-dhl italic" id="hero-t2">TEAM B</div>
             </div>
-            
-            <div class="flex flex-col md:flex-row items-center justify-between gap-8">
-                <!-- Team A -->
-                <div class="flex-1">
-                    <h2 class="text-4xl md:text-6xl font-black oswald uppercase italic" id="hero-team-a">Team A</h2>
-                    <p class="text-pink-600 font-bold mt-2 tracking-widest uppercase text-xs">Challenger</p>
-                </div>
-
-                <!-- Score -->
-                <div class="flex flex-col items-center">
-                    <div class="text-7xl md:text-9xl font-black oswald italic neon-text" id="hero-score">0 : 0</div>
-                    <div class="vs-badge px-8 py-1 text-black font-black italic mt-[-10px]">VS</div>
-                </div>
-
-                <!-- Team B -->
-                <div class="flex-1">
-                    <h2 class="text-4xl md:text-6xl font-black oswald uppercase italic" id="hero-team-b">Team B</h2>
-                    <p class="text-pink-600 font-bold mt-2 tracking-widest uppercase text-xs">Defender</p>
-                </div>
-            </div>
-
-            <div class="mt-12 flex justify-center gap-8 text-sm font-bold opacity-70">
-                <div id="hero-sport">SOCCER</div>
-                <div class="text-pink-600">|</div>
-                <div id="hero-status">SECOND HALF</div>
-            </div>
+            <div class="mt-8 inline-block vs-tag px-10 py-2 font-dhl italic text-xl">SOCCER</div>
         </div>
     </section>
 
-    <div class="container mx-auto px-4 space-y-24 mt-10">
-
-        <!-- SECTION 1: TOURNAMENT BRACKET (Soccer/Volleyball) -->
-        <section>
-            <div class="mb-10">
-                <h3 class="text-2xl font-black oswald uppercase italic border-l-4 border-pink-600 pl-4">Tournament Bracket</h3>
-                <p class="text-gray-500 text-xs mt-1 uppercase">4 Teams - Road to Final</p>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-                <!-- Semi Finals -->
-                <div class="space-y-8">
-                    <!-- SF 1 -->
-                    <div class="bg-gray-900/80 p-4 rounded border-l-2 border-pink-600 neon-box">
-                        <div class="flex justify-between text-sm mb-2">
-                            <span id="sf1-t1">Team 1</span> <span class="font-bold oswald text-pink-600" id="sf1-s1">0</span>
+    <div class="checker-bg py-12">
+        <div class="container mx-auto px-4 space-y-20">
+            
+            <!-- Tournament Bracket -->
+            <section>
+                <h3 class="font-dhl text-2xl italic mb-8 border-b-4 border-[#D40511] inline-block">Tournament Bracket</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                    <div class="space-y-6">
+                        <div class="bracket-card p-4 shadow-md">
+                            <div class="flex justify-between font-bold border-b pb-1 mb-1"><span>SF1 - T1</span> <span class="text-[#D40511]" id="sf1-s1">0</span></div>
+                            <div class="flex justify-between font-bold"><span>SF1 - T2</span> <span class="text-[#D40511]" id="sf1-s2">0</span></div>
                         </div>
-                        <div class="flex justify-between text-sm">
-                            <span id="sf1-t2">Team 2</span> <span class="font-bold oswald text-pink-600" id="sf1-s2">0</span>
+                        <div class="bracket-card p-4 shadow-md">
+                            <div class="flex justify-between font-bold border-b pb-1 mb-1"><span>SF2 - T1</span> <span class="text-[#D40511]" id="sf2-s1">0</span></div>
+                            <div class="flex justify-between font-bold"><span>SF2 - T2</span> <span class="text-[#D40511]" id="sf2-s2">0</span></div>
                         </div>
                     </div>
-                    <!-- SF 2 -->
-                    <div class="bg-gray-900/80 p-4 rounded border-l-2 border-pink-600 neon-box">
-                        <div class="flex justify-between text-sm mb-2">
-                            <span id="sf2-t1">Team 3</span> <span class="font-bold oswald text-pink-600" id="sf2-s1">0</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span id="sf2-t2">Team 4</span> <span class="font-bold oswald text-pink-600" id="sf2-s2">0</span>
+                    <div class="text-center">
+                        <div class="bg-white p-8 rounded-2xl shadow-xl border-4 border-[#FFCC00] inline-block min-w-[250px]">
+                            <div class="font-dhl text-[#D40511] text-xl mb-4 italic">Grand Final</div>
+                            <div class="font-bold text-lg" id="final-t1">Winner SF1</div>
+                            <div class="font-dhl text-3xl my-2">VS</div>
+                            <div class="font-bold text-lg" id="final-t2">Winner SF2</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Final -->
-                <div class="text-center">
-                    <div class="inline-block bg-gradient-to-b from-pink-600 to-transparent p-[1px] rounded-xl">
-                        <div class="bg-black p-8 rounded-xl">
-                            <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" class="w-12 mx-auto mb-4 opacity-50" alt="trophy">
-                            <h4 class="oswald font-bold text-xl uppercase italic mb-4">Grand Final</h4>
-                            <div class="text-sm space-y-2">
-                                <div id="final-t1" class="font-bold">Winner SF1</div>
-                                <div class="text-pink-600 font-black oswald text-2xl">VS</div>
-                                <div id="final-t2" class="font-bold">Winner SF2</div>
-                            </div>
+                    <div class="text-center">
+                        <div class="bg-[#D40511] text-white p-8 rounded-full w-48 h-48 mx-auto flex flex-col justify-center items-center shadow-2xl">
+                            <div class="text-[10px] font-bold uppercase tracking-widest mb-2">Champion</div>
+                            <div class="font-dhl text-2xl italic" id="grand-winner">TBD</div>
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <!-- Champion -->
-                <div class="text-center">
-                    <div class="neon-box bg-gray-900/40 p-10 rounded-full w-48 h-48 mx-auto flex flex-col justify-center items-center border-dashed border-2">
-                        <span class="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Champion</span>
-                        <div class="text-2xl font-black oswald uppercase italic mt-2 neon-text" id="grand-winner">TBD</div>
-                    </div>
+            <!-- Single Games -->
+            <section>
+                <h3 class="font-dhl text-2xl italic mb-8 border-b-4 border-[#D40511] inline-block">Single Matches</h3>
+                <div id="single-matches-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Injected by JS -->
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- SECTION 2: SINGLE GAMES (Pingpong/Badminton) -->
-        <section>
-            <h3 class="text-2xl font-black oswald uppercase italic mb-8 border-l-4 border-blue-500 pl-4">Single Matches</h3>
-            <div id="single-matches-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Injected by JS -->
-            </div>
-        </section>
-
-        <!-- SECTION 3: SWIMMING RANKING -->
-        <section>
-            <h3 class="text-2xl font-black oswald uppercase italic mb-8 border-l-4 border-cyan-400 pl-4">Swimming Ranking</h3>
-            <div class="bg-gray-900/80 rounded-lg border border-white/5 overflow-hidden">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-white/5 text-gray-400 uppercase text-[10px] tracking-widest">
-                        <tr>
-                            <th class="p-4">Rank</th>
-                            <th class="p-4">Athlete</th>
-                            <th class="p-4 text-right">Result</th>
-                        </tr>
-                    </thead>
-                    <tbody id="swimming-list" class="divide-y divide-white/5">
-                        <!-- Injected by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
+            <!-- Swimming -->
+            <section>
+                <h3 class="font-dhl text-2xl italic mb-8 border-b-4 border-[#D40511] inline-block">Swimming Ranking</h3>
+                <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-black text-[#FFCC00] font-dhl italic uppercase text-xs">
+                            <tr><th class="p-4">Rank</th><th class="p-4">Athlete</th><th class="p-4 text-right">Result</th></tr>
+                        </thead>
+                        <tbody id="swimming-list" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
     </div>
 
     <script>
@@ -176,86 +115,50 @@
         const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        async function fetchData() {
-            // ១. ទាញទិន្នន័យការប្រកួត
+        async function loadData() {
             const { data: matches } = await supabaseClient.from('matches').select('*');
-            // ២. ទាញទិន្នន័យហែលទឹក
             const { data: swimmers } = await supabaseClient.from('swimming_results').select('*').order('rank', { ascending: true });
 
             if(matches) {
-                renderHero(matches);
-                renderBracket(matches);
-                renderSingles(matches);
-            }
-            if(swimmers) renderSwimming(swimmers);
-        }
+                const live = matches.find(m => m.status === 'Live') || matches[0];
+                document.getElementById('hero-t1').innerText = live.team_a;
+                document.getElementById('hero-t2').innerText = live.team_b;
+                document.getElementById('hero-score').innerText = `${live.score_a} : ${live.score_b}`;
 
-        // បង្ហាញហ្គេមដែលកំពុង Live នៅលើ Hero Section
-        function renderHero(matches) {
-            const liveMatch = matches.find(m => m.status === 'Live') || matches[0];
-            if(liveMatch) {
-                document.getElementById('hero-team-a').innerText = liveMatch.team_a;
-                document.getElementById('hero-team-b').innerText = liveMatch.team_b;
-                document.getElementById('hero-score').innerText = `${liveMatch.score_a} : ${liveMatch.score_b}`;
-                document.getElementById('hero-sport').innerText = liveMatch.sport_name;
-                document.getElementById('hero-status').innerText = liveMatch.status;
-            }
-        }
-
-        // បង្ហាញ Tournament Bracket
-        function renderBracket(matches) {
-            matches.forEach(m => {
-                if(m.match_label === 'SF1') {
-                    document.getElementById('sf1-t1').innerText = m.team_a;
-                    document.getElementById('sf1-t2').innerText = m.team_b;
-                    document.getElementById('sf1-s1').innerText = m.score_a;
-                    document.getElementById('sf1-s2').innerText = m.score_b;
-                }
-                if(m.match_label === 'SF2') {
-                    document.getElementById('sf2-t1').innerText = m.team_a;
-                    document.getElementById('sf2-t2').innerText = m.team_b;
-                    document.getElementById('sf2-s1').innerText = m.score_a;
-                    document.getElementById('sf2-s2').innerText = m.score_b;
-                }
-                if(m.match_label === 'Final') {
-                    document.getElementById('final-t1').innerText = m.team_a;
-                    document.getElementById('final-t2').innerText = m.team_b;
-                    if(m.status === 'Finished') {
-                        document.getElementById('grand-winner').innerText = m.score_a > m.score_b ? m.team_a : m.team_b;
+                matches.forEach(m => {
+                    if(m.match_label === 'SF1') { document.getElementById('sf1-s1').innerText = m.score_a; document.getElementById('sf1-s2').innerText = m.score_b; }
+                    if(m.match_label === 'SF2') { document.getElementById('sf2-s1').innerText = m.score_a; document.getElementById('sf2-s2').innerText = m.score_b; }
+                    if(m.match_label === 'Final') {
+                        document.getElementById('final-t1').innerText = m.team_a;
+                        document.getElementById('final-t2').innerText = m.team_b;
+                        if(m.status === 'Finished') document.getElementById('grand-winner').innerText = m.score_a > m.score_b ? m.team_a : m.team_b;
                     }
-                }
-            });
-        }
+                });
 
-        // បង្ហាញហ្គេមឯកត្តជន
-        function renderSingles(matches) {
-            const singles = matches.filter(m => m.sport_name === 'Pingpong' || m.sport_name === 'Badminton');
-            const grid = document.getElementById('single-matches-grid');
-            grid.innerHTML = singles.map(m => `
-                <div class="bg-gray-900/50 p-6 rounded-xl border border-white/5 hover:border-blue-500/50 transition group">
-                    <div class="text-[10px] font-bold text-blue-500 uppercase mb-4">${m.sport_name}</div>
-                    <div class="flex justify-between items-center">
-                        <div class="font-bold text-sm">${m.team_a}</div>
-                        <div class="oswald font-black text-xl group-hover:text-blue-500">${m.score_a} - ${m.score_b}</div>
-                        <div class="font-bold text-sm">${m.team_b}</div>
+                const singles = matches.filter(m => m.sport_name === 'Pingpong' || m.sport_name === 'Badminton');
+                document.getElementById('single-matches-grid').innerHTML = singles.map(m => `
+                    <div class="bg-white p-6 rounded shadow-md border-t-4 border-[#D40511]">
+                        <div class="text-[10px] font-bold text-gray-400 uppercase mb-2">${m.sport_name}</div>
+                        <div class="flex justify-between items-center font-dhl italic">
+                            <span>${m.team_a}</span>
+                            <span class="text-2xl text-[#D40511]">${m.score_a}-${m.score_b}</span>
+                            <span>${m.team_b}</span>
+                        </div>
                     </div>
-                </div>
-            `).join('');
-        }
+                `).join('');
+            }
 
-        // បង្ហាញតារាងហែលទឹក
-        function renderSwimming(swimmers) {
-            const list = document.getElementById('swimming-list');
-            list.innerHTML = swimmers.map(s => `
-                <tr class="hover:bg-white/5 transition">
-                    <td class="p-4 font-black oswald text-cyan-400">#${s.rank}</td>
-                    <td class="p-4 font-bold uppercase text-xs">${s.name}</td>
-                    <td class="p-4 text-right font-mono text-gray-400">${s.result_time}</td>
-                </tr>
-            `).join('');
+            if(swimmers) {
+                document.getElementById('swimming-list').innerHTML = swimmers.map(s => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-4 font-dhl text-[#D40511]">#${s.rank}</td>
+                        <td class="p-4 font-bold uppercase text-sm">${s.name}</td>
+                        <td class="p-4 text-right font-mono">${s.result_time}</td>
+                    </tr>
+                `).join('');
+            }
         }
-
-        window.onload = fetchData;
+        window.onload = loadData;
     </script>
 </body>
 </html>
