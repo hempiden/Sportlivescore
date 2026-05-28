@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team Management - DHL Games Day</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --dhl-yellow: #FFCC00; --dhl-red: #D40511; }
+        body { background-color: #f3f4f6; font-family: 'Kantumruy Pro', sans-serif; }
+        .font-dhl { font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; }
+        .bg-dhl-yellow { background-color: var(--dhl-yellow); }
+        .btn-dhl-red { background-color: var(--dhl-red); color: white; transition: 0.2s; }
+        .btn-dhl-red:hover { background-color: #b0040e; }
+        .card-team { background: white; border-top: 4px solid var(--dhl-yellow); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .active-team { border-left: 8px solid var(--dhl-red); background-color: #fffbeb; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="p-4 bg-white border-b-4 border-[#FFCC00] flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div class="flex items-center gap-3">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/DHL_Logo.svg/1200px-DHL_Logo.svg.png" class="h-5 md:h-6" alt="DHL">
+            <div class="h-6 w-[2px] bg-gray-300 mx-2"></div>
+            <h1 class="font-dhl italic text-[#D40511] text-lg tracking-tighter">TEAM MANAGEMENT</h1>
+        </div>
+        <a href="admin.html" class="text-xs font-bold uppercase text-gray-500 hover:text-black">← Back to Admin</a>
+    </header>
+
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0">
+        
+        <!-- Left Sidebar: Team List -->
+        <aside class="lg:col-span-4 bg-white border-r border-gray-200 p-6 overflow-y-auto max-h-screen">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="font-dhl italic text-[#D40511] text-xl">Teams List</h2>
+                <button onclick="createNewTeam()" class="bg-black text-white text-[10px] px-3 py-1 rounded font-bold uppercase">+ New Team</button>
+            </div>
+
+            <div id="team-list" class="space-y-3">
+                <!-- Teams will be loaded here -->
+                <p class="text-gray-400 text-sm italic">កំពុងទាញទិន្នន័យក្រុម...</p>
+            </div>
+        </aside>
+
+        <!-- Main Content: Team Editor -->
+        <main class="lg:col-span-8 p-8 overflow-y-auto bg-gray-50">
+            <div id="editor-placeholder" class="h-full flex flex-col items-center justify-center text-gray-400">
+                <img src="https://cdn-icons-png.flaticon.com/512/681/681494.png" class="w-20 opacity-10 mb-4">
+                <p>សូមជ្រើសរើសក្រុមណាមួយដើម្បីកែសម្រួល</p>
+            </div>
+
+            <div id="team-editor" class="hidden space-y-8">
+                <!-- Team Name Edit Section -->
+                <div class="card-team p-6 rounded-xl">
+                    <label class="text-[10px] font-black uppercase text-gray-400 block mb-2">Team Identity</label>
+                    <div class="flex gap-4">
+                        <input type="text" id="edit-team-name" class="flex-1 bg-gray-50 border border-gray-300 p-3 rounded-lg font-bold text-lg outline-none focus:ring-2 focus:ring-[#FFCC00]">
+                        <button onclick="saveTeamName()" class="btn-dhl-red px-8 rounded-lg font-dhl italic">Save Name</button>
+                    </div>
+                </div>
+
+                <!-- Member Management Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- Current Members -->
+                    <div class="card-team p-6 rounded-xl border-t-4 border-black">
+                        <h3 class="font-dhl italic text-lg mb-4">Team Members</h3>
+                        <div id="current-members" class="space-y-2">
+                            <!-- Members loaded here -->
+                        </div>
+                    </div>
+
+                    <!-- Add New Member -->
+                    <div class="card-team p-6 rounded-xl border-t-4 border-[#D40511]">
+                        <h3 class="font-dhl italic text-lg mb-4">Add Member</h3>
+                        <div class="space-y-4">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">ជ្រើសរើសកីឡាករដែលមិនទាន់មានក្រុម</p>
+                            <select id="available-players" class="w-full p-3 border rounded-lg bg-gray-50 text-sm font-bold">
+                                <!-- Unassigned players loaded here -->
+                            </select>
+                            <button onclick="addMemberToTeam()" class="w-full bg-black text-white py-3 rounded-lg font-dhl italic">Add to Team</button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Delete Team -->
+                <div class="pt-10 border-t border-gray-200">
+                    <button onclick="deleteTeam()" class="text-red-500 text-xs font-bold uppercase hover:underline">Delete this team permanently</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let selectedTeamId = null;
+
+        // ១. ទាញបញ្ជីក្រុមទាំងអស់
+        async function loadTeams() {
+            const { data: teams, error } = await supabaseClient.from('participants').select('*').eq('is_team', true).order('name');
+            const list = document.getElementById('team-list');
+            list.innerHTML = '';
+
+            teams.forEach(team => {
+                const div = document.createElement('div');
+                div.className = `p-4 rounded-lg border border-gray-200 cursor-pointer transition hover:shadow-md ${selectedTeamId === team.id ? 'active-team' : 'bg-white'}`;
+                div.onclick = () => selectTeam(team);
+                div.innerHTML = `
+                    <div class="font-bold text-gray-800">${team.name}</div>
+                    <div class="text-[10px] text-gray-400 uppercase font-black italic">${team.sport_type}</div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // ២. ជ្រើសរើសក្រុមដើម្បីកែសម្រួល
+        async function selectTeam(team) {
+            selectedTeamId = team.id;
+            document.getElementById('editor-placeholder').classList.add('hidden');
+            document.getElementById('team-editor').classList.remove('hidden');
+            
+            document.getElementById('edit-team-name').value = team.name;
+            
+            loadTeams(); // ដើម្បី Update ពណ៌ Active
+            loadTeamMembers();
+            loadAvailablePlayers(team.sport_type);
+        }
+
+        // ៣. ទាញសមាជិកក្នុងក្រុម
+        async function loadTeamMembers() {
+            const { data: members } = await supabaseClient
+                .from('participants')
+                .select('*')
+                .eq('team_id', selectedTeamId);
+
+            const container = document.getElementById('current-members');
+            container.innerHTML = members.length ? '' : '<p class="text-gray-400 text-xs italic">មិនទាន់មានសមាជិក...</p>';
+
+            members.forEach(m => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100";
+                div.innerHTML = `
+                    <span class="font-bold text-sm">${m.name}</span>
+                    <button onclick="removeMember(${m.id})" class="text-red-500 hover:text-red-700 text-xs font-bold">Remove</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // ៤. ទាញកីឡាករដែលមិនទាន់មានក្រុម (តាមប្រភេទកីឡាដូចគ្នា)
+        async function loadAvailablePlayers(sportType) {
+            const { data: players } = await supabaseClient
+                .from('participants')
+                .select('*')
+                .eq('sport_type', sportType)
+                .eq('is_team', false)
+                .is('team_id', null);
+
+            const select = document.getElementById('available-players');
+            select.innerHTML = players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            if(!players.length) select.innerHTML = '<option disabled>គ្មានកីឡាករទំនេរ</option>';
+        }
+
+        // ៥. រក្សាទុកឈ្មោះក្រុមថ្មី
+        async function saveTeamName() {
+            const newName = document.getElementById('edit-team-name').value;
+            await supabaseClient.from('participants').update({ name: newName }).eq('id', selectedTeamId);
+            alert("ឈ្មោះក្រុមត្រូវបានផ្លាស់ប្តូរ!");
+            loadTeams();
+        }
+
+        // ៦. បន្ថែមសមាជិកចូលក្រុម
+        async function addMemberToTeam() {
+            const playerId = document.getElementById('available-players').value;
+            if(!playerId) return;
+
+            await supabaseClient.from('participants').update({ team_id: selectedTeamId }).eq('id', playerId);
+            loadTeamMembers();
+            loadAvailablePlayers(document.getElementById('edit-team-name').dataset.sport); // ត្រូវការ Sport Type
+            location.reload(); // ងាយស្រួលបំផុតគឺ Refresh ដើម្បី Update បញ្ជី
+        }
+
+        // ៧. ដកសមាជិកចេញពីក្រុម
+        async function removeMember(playerId) {
+            if(!confirm("ដកសមាជិកនេះចេញពីក្រុម?")) return;
+            await supabaseClient.from('participants').update({ team_id: null }).eq('id', playerId);
+            loadTeamMembers();
+            location.reload();
+        }
+
+        // ៨. បង្កើតក្រុមថ្មី
+        async function createNewTeam() {
+            const name = prompt("បញ្ចូលឈ្មោះក្រុមថ្មី៖");
+            const sport = prompt("ប្រភេទកីឡា (Soccer/Volleyball)៖", "Soccer");
+            if(name && sport) {
+                await supabaseClient.from('participants').insert([{ name, sport_type: sport, is_team: true }]);
+                loadTeams();
+            }
+        }
+
+        // ៩. លុបក្រុម
+        async function deleteTeam() {
+            if(!confirm("តើអ្នកពិតជាចង់លុបក្រុមនេះមែនទេ? សមាជិកនឹងក្លាយជាកីឡាករគ្មានក្រុមវិញ។")) return;
+            // ១. ដោះលែងសមាជិក
+            await supabaseClient.from('participants').update({ team_id: null }).eq('id', selectedTeamId);
+            // ២. លុបក្រុម
+            await supabaseClient.from('participants').delete().eq('id', selectedTeamId);
+            location.reload();
+        }
+
+        window.onload = loadTeams;
+    </script>
+</body>
+</html>
