@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Sports Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;700&family=Oswald:wght@600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; }
+        .oswald { font-family: 'Oswald', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <!-- Navigation -->
+    <nav class="bg-slate-900 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold text-yellow-500 uppercase tracking-wider">Admin Control Panel</h1>
+            <span class="text-xs opacity-50">Sports Scoreboard v1.0</span>
+        </div>
+    </nav>
+
+    <div class="container mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- ១. Form ចុះឈ្មោះ (Registration) -->
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold mb-4 border-b pb-2 text-indigo-700">ចុះឈ្មោះក្រុម/កីឡាករ</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-bold mb-1">ប្រភេទកីឡា</label>
+                        <select id="reg-sport" class="w-full p-2 border rounded bg-gray-50">
+                            <option value="Soccer">Soccer (ក្រុម)</option>
+                            <option value="Volleyball">Volleyball (ក្រុម)</option>
+                            <option value="Pingpong">Pingpong (ឯកត្តជន)</option>
+                            <option value="Badminton">Badminton (ឯកត្តជន)</option>
+                            <option value="Swimming">Swimming (ឯកត្តជន)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1">ឈ្មោះក្រុម ឬ កីឡាករ</label>
+                        <input type="text" id="reg-name" class="w-full p-2 border rounded" placeholder="បញ្ចូលឈ្មោះ...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1">សមាជិក (សម្រាប់ Soccer/Volley)</label>
+                        <textarea id="reg-members" class="w-full p-2 border rounded text-sm" placeholder="ឈ្មោះសមាជិក (ក្បៀស , ដើម្បីញែក)"></textarea>
+                    </div>
+                    <button onclick="registerEntry()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded transition">
+                        រក្សាទុកទិន្នន័យ
+                    </button>
+                </div>
+            </div>
+
+            <!-- ២. មុខងារចាប់គូប្រកួត (Matching) -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 class="text-lg font-bold mb-4 border-b pb-2 text-orange-600">រៀបចំការប្រកួត (Matching)</h2>
+                <div class="grid grid-cols-1 gap-3">
+                    <button onclick="generateMatches('Soccer')" class="bg-blue-500 text-white py-2 rounded text-sm font-bold hover:bg-blue-600">
+                        Auto Random Soccer Team
+                    </button>
+                    <button onclick="generateMatches('Badminton')" class="bg-green-500 text-white py-2 rounded text-sm font-bold hover:bg-green-600">
+                        Lucky Draw Badminton
+                    </button>
+                    <button onclick="generateMatches('Pingpong')" class="bg-pink-500 text-white py-2 rounded text-sm font-bold hover:bg-pink-600">
+                        Lucky Draw Pingpong
+                    </button>
+                </div>
+                <p class="text-[10px] text-gray-400 mt-3">* ប្រព័ន្ធនឹងចាប់គូដោយស្វ័យប្រវត្តិចេញពីបញ្ជីឈ្មោះដែលបានចុះឈ្មោះរួច។</p>
+            </div>
+        </div>
+
+        <!-- ៣. បញ្ចូលពិន្ទុផ្ទាល់ៗ (Live Scoring) -->
+        <div class="lg:col-span-2">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 min-h-[500px]">
+                <div class="flex justify-between items-center mb-6 border-b pb-2">
+                    <h2 class="text-lg font-bold text-red-600">ការប្រកួតកំពុងដំណើរការ (Live Scoring)</h2>
+                    <button onclick="loadActiveMatches()" class="text-xs bg-gray-200 px-3 py-1 rounded hover:bg-gray-300">Refresh</button>
+                </div>
+
+                <div id="active-matches-list" class="space-y-4">
+                    <!-- បញ្ជីការប្រកួតនឹងបង្ហាញនៅទីនេះ -->
+                    <p class="text-gray-400 text-center py-10">មិនទាន់មានការប្រកួតកំពុងដំណើរការនៅឡើយ...</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Supabase Config ---
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ១. មុខងារចុះឈ្មោះចូល Table 'participants'
+        async function registerEntry() {
+            const sport = document.getElementById('reg-sport').value;
+            const name = document.getElementById('reg-name').value;
+            const members = document.getElementById('reg-members').value;
+
+            if (!name) return alert("សូមបញ្ចូលឈ្មោះ!");
+
+            const { error } = await supabase
+                .from('participants')
+                .insert([{ 
+                    name: name, 
+                    sport_type: sport, 
+                    members: members,
+                    status: 'active' 
+                }]);
+
+            if (error) alert("Error: " + error.message);
+            else {
+                alert("ចុះឈ្មោះជោគជ័យ!");
+                document.getElementById('reg-name').value = '';
+                document.getElementById('reg-members').value = '';
+            }
+        }
+
+        // ២. មុខងារចាប់គូស្វ័យប្រវត្តិ (Random Matching)
+        async function generateMatches(sportType) {
+            // ទាញយកឈ្មោះអ្នកដែលបានចុះឈ្មោះតាមប្រភេទកីឡា
+            const { data: entries, error } = await supabase
+                .from('participants')
+                .select('name')
+                .eq('sport_type', sportType)
+                .eq('status', 'active');
+
+            if (entries.length < 2) return alert("ត្រូវការយ៉ាងតិច ២ នាក់/ក្រុម ដើម្បីចាប់គូ!");
+
+            // លាយបញ្ជីឈ្មោះ (Shuffle)
+            const shuffled = entries.sort(() => 0.5 - Math.random());
+            
+            // បង្កើតគូប្រកួត
+            const matchesToInsert = [];
+            for (let i = 0; i < shuffled.length; i += 2) {
+                if (shuffled[i+1]) {
+                    matchesToInsert.push({
+                        sport_name: sportType,
+                        team_a: shuffled[i].name,
+                        team_b: shuffled[i+1].name,
+                        score_a: 0,
+                        score_b: 0,
+                        status: 'Live'
+                    });
+                }
+            }
+
+            const { error: insertError } = await supabase.from('matches').insert(matchesToInsert);
+            if (insertError) alert(insertError.message);
+            else {
+                alert("ចាប់គូប្រកួតរួចរាល់!");
+                loadActiveMatches();
+            }
+        }
+
+        // ៣. ទាញការប្រកួតមកបង្ហាញដើម្បីបញ្ចូលពិន្ទុ
+        async function loadActiveMatches() {
+            const { data: matches, error } = await supabase
+                .from('matches')
+                .select('*')
+                .eq('status', 'Live')
+                .order('created_at', { ascending: false });
+
+            const listArea = document.getElementById('active-matches-list');
+            listArea.innerHTML = '';
+
+            if (matches.length === 0) {
+                listArea.innerHTML = '<p class="text-gray-400 text-center py-10">មិនទាន់មានការប្រកួត...</p>';
+                return;
+            }
+
+            matches.forEach(match => {
+                const div = document.createElement('div');
+                div.className = "bg-gray-50 p-4 rounded-lg border flex flex-wrap items-center justify-between gap-4";
+                div.innerHTML = `
+                    <div class="flex-1 min-w-[150px]">
+                        <span class="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded">${match.sport_name}</span>
+                        <div class="font-bold text-sm mt-1">${match.team_a} vs ${match.team_b}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="score-a-${match.id}" value="${match.score_a}" class="w-14 p-1 border rounded text-center font-bold">
+                        <span class="font-bold">:</span>
+                        <input type="number" id="score-b-${match.id}" value="${match.score_b}" class="w-14 p-1 border rounded text-center font-bold">
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="updateScore(${match.id})" class="bg-green-600 text-white px-4 py-1 rounded text-xs font-bold">Update</button>
+                        <button onclick="finishMatch(${match.id})" class="bg-gray-800 text-white px-4 py-1 rounded text-xs font-bold">Finish</button>
+                    </div>
+                `;
+                listArea.appendChild(div);
+            });
+        }
+
+        // ៤. មុខងារ Update ពិន្ទុទៅ Supabase
+        async function updateScore(matchId) {
+            const scoreA = document.getElementById(`score-a-${matchId}`).value;
+            const scoreB = document.getElementById(`score-b-${matchId}`).value;
+
+            const { error } = await supabase
+                .from('matches')
+                .update({ score_a: scoreA, score_b: scoreB })
+                .eq('id', matchId);
+
+            if (error) alert(error.message);
+            else {
+                // បង្ហាញ Feedback តូចមួយថាបាន Update រួច
+                console.log("Score updated for match " + matchId);
+            }
+        }
+
+        // ៥. បញ្ចប់ការប្រកួត
+        async function finishMatch(matchId) {
+            if (!confirm("តើអ្នកពិតជាចង់បញ្ចប់ការប្រកួតនេះមែនទេ?")) return;
+            
+            const { error } = await supabase
+                .from('matches')
+                .update({ status: 'Finished' })
+                .eq('id', matchId);
+
+            if (error) alert(error.message);
+            else loadActiveMatches();
+        }
+
+        // ចាប់ផ្តើមទាញទិន្នន័យពេលបើក Page
+        loadActiveMatches();
+
+    </script>
+</body>
+</html>
