@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Champion Sports - Scoreboard</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; }
+        .oswald { font-family: 'Oswald', sans-serif; }
+        .hero-bg {
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1626224580175-340ad0e3a766?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-position: center;
+        }
+        .winner-ring { border: 4px solid #22c55e; position: relative; }
+        .winner-ring::after {
+            content: '✓';
+            position: absolute;
+            bottom: -5px; right: -5px;
+            background: #22c55e; color: white;
+            border-radius: 50%; width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center; font-size: 12px;
+        }
+        .loser-card { filter: grayscale(1); opacity: 0.6; }
+    </style>
+</head>
+<body class="bg-white">
+
+    <!-- Header (ស្ទីលតាមរូបភាព) -->
+    <nav class="bg-black text-white py-4 px-6 flex justify-between items-center border-b border-yellow-500">
+        <div class="flex items-center gap-2">
+            <div class="bg-yellow-500 text-black font-bold px-2 py-1 rounded italic oswald">CHAMPION</div>
+        </div>
+        <div class="hidden md:flex gap-6 text-xs uppercase font-bold">
+            <a href="#" class="hover:text-yellow-500">Home</a>
+            <a href="#" class="hover:text-yellow-500">Badminton</a>
+            <a href="#" class="hover:text-yellow-500">Pingpong</a>
+            <a href="#" class="hover:text-yellow-500">Contact Us</a>
+        </div>
+        <div class="text-yellow-500 text-xs font-bold">Call 24/7: 012-345-678</div>
+    </nav>
+
+    <!-- Hero Section: Active Game -->
+    <section class="hero-bg text-white py-16 px-4 relative">
+        <div class="container mx-auto text-center">
+            <div id="active-match-info">
+                <h3 class="text-yellow-500 font-bold uppercase tracking-widest mb-2 oswald">Badminton Championship</h3>
+                
+                <!-- Match Display -->
+                <div class="flex flex-col md:flex-row justify-center items-center gap-8 mt-6">
+                    <!-- Player A -->
+                    <div class="text-center">
+                        <div class="text-3xl font-bold oswald uppercase" id="player-a-name">Canada</div>
+                        <div class="text-sm opacity-70">Player A</div>
+                    </div>
+
+                    <!-- Score Card -->
+                    <div class="bg-black/80 border border-gray-500 rounded-lg p-6 min-w-[200px]">
+                        <div class="text-5xl font-black text-yellow-500 oswald" id="live-score">00 - 00</div>
+                        <div class="mt-2 inline-block bg-red-600 px-3 py-1 rounded text-xs animate-pulse">LIVE</div>
+                    </div>
+
+                    <!-- Player B -->
+                    <div class="text-center">
+                        <div class="text-3xl font-bold oswald uppercase" id="player-b-name">India</div>
+                        <div class="text-sm opacity-70">Player B</div>
+                    </div>
+                </div>
+
+                <!-- Time Info -->
+                <div class="mt-8 flex justify-center gap-10 text-sm font-bold">
+                    <div>START: <span id="start-time" class="text-yellow-500">09:00 AM</span></div>
+                    <div>BREAK: <span id="break-time" class="text-yellow-500">10 Mins</span></div>
+                </div>
+
+                <!-- Random Select Button -->
+                <button onclick="fetchRandomMatch()" class="mt-10 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-6 rounded-full transition uppercase text-sm">
+                    Random Select Match
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Players List Section -->
+    <section class="py-16 container mx-auto px-4">
+        <div class="text-center mb-12">
+            <img src="https://cdn-icons-png.flaticon.com/512/2618/2618145.png" class="w-10 mx-auto mb-4" alt="icon">
+            <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Champions Lead The Way</p>
+            <h2 class="text-4xl font-black oswald uppercase italic">Our Leading Players</h2>
+        </div>
+
+        <!-- Players Grid -->
+        <div id="players-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- កន្លែងបង្ហាញកីឡាករ (ទាញពី Supabase) -->
+            <div class="text-center py-10 col-span-full">កំពុងទាញទិន្នន័យកីឡាករ...</div>
+        </div>
+    </section>
+
+    <script>
+        // --- Supabase Configuration ---
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // ១. មុខងារទាញទិន្នន័យហ្គេមកំពុងលេង (Active Match)
+        async function fetchRandomMatch() {
+            try {
+                // ទាញយកហ្គេមដែលមាន Status = 'Live'
+                const { data, error } = await supabaseClient
+                    .from('matches')
+                    .select('*')
+                    .limit(1); // ក្នុងឧទាហរណ៍នេះយើងយក ១ មកបង្ហាញ
+
+                if (data && data.length > 0) {
+                    const match = data[0];
+                    document.getElementById('player-a-name').innerText = match.player_a;
+                    document.getElementById('player-b-name').innerText = match.player_b;
+                    document.getElementById('live-score').innerText = `${match.score_a} - ${match.score_b}`;
+                    document.getElementById('start-time').innerText = match.start_time || '09:00 AM';
+                }
+            } catch (err) {
+                console.log("Error fetching match:", err);
+            }
+        }
+
+        // ២. មុខងារទាញបញ្ជីកីឡាករ (Players List)
+        async function fetchPlayers() {
+            try {
+                const { data: players, error } = await supabaseClient
+                    .from('players')
+                    .select('*');
+
+                if (error) throw error;
+
+                const grid = document.getElementById('players-grid');
+                grid.innerHTML = '';
+
+                players.forEach(player => {
+                    // លក្ខខណ្ឌ៖ បើចាញ់ (is_loser) ឱ្យទៅជាពណ៌ស្រអាប់ បើឈ្នះ (is_winner) ឱ្យមានរង្វង់បៃតង
+                    const statusClass = player.is_loser ? 'loser-card' : '';
+                    const imgClass = player.is_winner ? 'winner-ring' : '';
+
+                    const card = `
+                        <div class="bg-gray-100 p-4 rounded flex items-center gap-4 transition hover:shadow-md ${statusClass}">
+                            <div class="relative">
+                                <img src="${player.avatar_url || 'https://via.placeholder.com/80'}" 
+                                     class="w-16 h-16 rounded-full object-cover bg-white ${imgClass}">
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg uppercase oswald">${player.name}</h4>
+                                <p class="text-xs text-gray-500 uppercase font-bold">${player.role || 'Player'}</p>
+                            </div>
+                        </div>
+                    `;
+                    grid.innerHTML += card;
+                });
+            } catch (err) {
+                console.log("Error fetching players:", err);
+            }
+        }
+
+        // ដំណើរការនៅពេលបើក Page ដំបូង
+        window.onload = () => {
+            fetchRandomMatch();
+            fetchPlayers();
+        };
+    </script>
+</body>
+</html>
