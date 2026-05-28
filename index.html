@@ -3,175 +3,259 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Champion Sports - Scoreboard</title>
-    
-    <!-- Tailwind CSS CDN -->
+    <title>BIGAMER - Live Scoreboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;700&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'Kantumruy Pro', sans-serif; }
+        body { background-color: #05070a; color: white; font-family: 'Kantumruy Pro', sans-serif; }
         .oswald { font-family: 'Oswald', sans-serif; }
-        .hero-bg {
-            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1626224580175-340ad0e3a766?q=80&w=2070&auto=format&fit=crop');
+        
+        /* Hero Background */
+        .hero-section {
+            background: linear-gradient(to bottom, rgba(5, 7, 10, 0.2), #05070a), 
+                        url('https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=2000&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
         }
-        .winner-ring { border: 4px solid #22c55e; position: relative; }
-        .winner-ring::after {
-            content: '✓';
-            position: absolute;
-            bottom: -5px; right: -5px;
-            background: #22c55e; color: white;
-            border-radius: 50%; width: 20px; height: 20px;
-            display: flex; align-items: center; justify-content: center; font-size: 12px;
+
+        .neon-text { color: #ff005c; text-shadow: 0 0 15px rgba(255, 0, 92, 0.7); }
+        .neon-box { border: 1px solid rgba(255, 0, 92, 0.3); box-shadow: 0 0 20px rgba(255, 0, 92, 0.1); }
+        
+        .vs-badge {
+            background: #ff005c;
+            clip-path: polygon(20% 0%, 100% 0%, 80% 100%, 0% 100%);
         }
-        .loser-card { filter: grayscale(1); opacity: 0.6; }
+
+        /* Bracket Line */
+        .bracket-connector {
+            position: absolute;
+            border-color: #ff005c;
+            border-width: 2px;
+        }
     </style>
 </head>
-<body class="bg-white">
+<body class="pb-20">
 
-    <!-- Header (ស្ទីលតាមរូបភាព) -->
-    <nav class="bg-black text-white py-4 px-6 flex justify-between items-center border-b border-yellow-500">
+    <!-- Header -->
+    <nav class="p-6 flex justify-between items-center bg-black/50 backdrop-blur-md sticky top-0 z-50 border-b border-white/10">
         <div class="flex items-center gap-2">
-            <div class="bg-yellow-500 text-black font-bold px-2 py-1 rounded italic oswald">CHAMPION</div>
+            <div class="bg-pink-600 text-white font-black px-2 py-1 italic oswald">BIGAMER</div>
         </div>
-        <div class="hidden md:flex gap-6 text-xs uppercase font-bold">
-            <a href="#" class="hover:text-yellow-500">Home</a>
-            <a href="#" class="hover:text-yellow-500">Badminton</a>
-            <a href="#" class="hover:text-yellow-500">Pingpong</a>
-            <a href="#" class="hover:text-yellow-500">Contact Us</a>
+        <div class="text-xs font-bold uppercase tracking-widest flex gap-6">
+            <span class="text-pink-600">● Live Score</span>
+            <span class="opacity-50">Tournament</span>
+            <span class="opacity-50">Schedule</span>
         </div>
-        <div class="text-yellow-500 text-xs font-bold">Call 24/7: 012-345-678</div>
     </nav>
 
-    <!-- Hero Section: Active Game -->
-    <section class="hero-bg text-white py-16 px-4 relative">
-        <div class="container mx-auto text-center">
-            <div id="active-match-info">
-                <h3 class="text-yellow-500 font-bold uppercase tracking-widest mb-2 oswald">Badminton Championship</h3>
-                
-                <!-- Match Display -->
-                <div class="flex flex-col md:flex-row justify-center items-center gap-8 mt-6">
-                    <!-- Player A -->
-                    <div class="text-center">
-                        <div class="text-3xl font-bold oswald uppercase" id="player-a-name">Canada</div>
-                        <div class="text-sm opacity-70">Player A</div>
-                    </div>
-
-                    <!-- Score Card -->
-                    <div class="bg-black/80 border border-gray-500 rounded-lg p-6 min-w-[200px]">
-                        <div class="text-5xl font-black text-yellow-500 oswald" id="live-score">00 - 00</div>
-                        <div class="mt-2 inline-block bg-red-600 px-3 py-1 rounded text-xs animate-pulse">LIVE</div>
-                    </div>
-
-                    <!-- Player B -->
-                    <div class="text-center">
-                        <div class="text-3xl font-bold oswald uppercase" id="player-b-name">India</div>
-                        <div class="text-sm opacity-70">Player B</div>
-                    </div>
+    <!-- HERO SECTION: ACTIVE GAME -->
+    <section class="hero-section min-h-[60vh] flex items-center justify-center px-4 relative">
+        <div class="text-center max-w-4xl w-full">
+            <div class="inline-block bg-pink-600 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-[0.3em] mb-6 animate-pulse">
+                Live Match
+            </div>
+            
+            <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+                <!-- Team A -->
+                <div class="flex-1">
+                    <h2 class="text-4xl md:text-6xl font-black oswald uppercase italic" id="hero-team-a">Team A</h2>
+                    <p class="text-pink-600 font-bold mt-2 tracking-widest uppercase text-xs">Challenger</p>
                 </div>
 
-                <!-- Time Info -->
-                <div class="mt-8 flex justify-center gap-10 text-sm font-bold">
-                    <div>START: <span id="start-time" class="text-yellow-500">09:00 AM</span></div>
-                    <div>BREAK: <span id="break-time" class="text-yellow-500">10 Mins</span></div>
+                <!-- Score -->
+                <div class="flex flex-col items-center">
+                    <div class="text-7xl md:text-9xl font-black oswald italic neon-text" id="hero-score">0 : 0</div>
+                    <div class="vs-badge px-8 py-1 text-black font-black italic mt-[-10px]">VS</div>
                 </div>
 
-                <!-- Random Select Button -->
-                <button onclick="fetchRandomMatch()" class="mt-10 bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-2 px-6 rounded-full transition uppercase text-sm">
-                    Random Select Match
-                </button>
+                <!-- Team B -->
+                <div class="flex-1">
+                    <h2 class="text-4xl md:text-6xl font-black oswald uppercase italic" id="hero-team-b">Team B</h2>
+                    <p class="text-pink-600 font-bold mt-2 tracking-widest uppercase text-xs">Defender</p>
+                </div>
+            </div>
+
+            <div class="mt-12 flex justify-center gap-8 text-sm font-bold opacity-70">
+                <div id="hero-sport">SOCCER</div>
+                <div class="text-pink-600">|</div>
+                <div id="hero-status">SECOND HALF</div>
             </div>
         </div>
     </section>
 
-    <!-- Players List Section -->
-    <section class="py-16 container mx-auto px-4">
-        <div class="text-center mb-12">
-            <img src="https://cdn-icons-png.flaticon.com/512/2618/2618145.png" class="w-10 mx-auto mb-4" alt="icon">
-            <p class="text-xs font-bold text-gray-500 uppercase tracking-widest">Champions Lead The Way</p>
-            <h2 class="text-4xl font-black oswald uppercase italic">Our Leading Players</h2>
-        </div>
+    <div class="container mx-auto px-4 space-y-24 mt-10">
 
-        <!-- Players Grid -->
-        <div id="players-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- កន្លែងបង្ហាញកីឡាករ (ទាញពី Supabase) -->
-            <div class="text-center py-10 col-span-full">កំពុងទាញទិន្នន័យកីឡាករ...</div>
-        </div>
-    </section>
+        <!-- SECTION 1: TOURNAMENT BRACKET (Soccer/Volleyball) -->
+        <section>
+            <div class="mb-10">
+                <h3 class="text-2xl font-black oswald uppercase italic border-l-4 border-pink-600 pl-4">Tournament Bracket</h3>
+                <p class="text-gray-500 text-xs mt-1 uppercase">4 Teams - Road to Final</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
+                <!-- Semi Finals -->
+                <div class="space-y-8">
+                    <!-- SF 1 -->
+                    <div class="bg-gray-900/80 p-4 rounded border-l-2 border-pink-600 neon-box">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span id="sf1-t1">Team 1</span> <span class="font-bold oswald text-pink-600" id="sf1-s1">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span id="sf1-t2">Team 2</span> <span class="font-bold oswald text-pink-600" id="sf1-s2">0</span>
+                        </div>
+                    </div>
+                    <!-- SF 2 -->
+                    <div class="bg-gray-900/80 p-4 rounded border-l-2 border-pink-600 neon-box">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span id="sf2-t1">Team 3</span> <span class="font-bold oswald text-pink-600" id="sf2-s1">0</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span id="sf2-t2">Team 4</span> <span class="font-bold oswald text-pink-600" id="sf2-s2">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Final -->
+                <div class="text-center">
+                    <div class="inline-block bg-gradient-to-b from-pink-600 to-transparent p-[1px] rounded-xl">
+                        <div class="bg-black p-8 rounded-xl">
+                            <img src="https://cdn-icons-png.flaticon.com/512/3112/3112946.png" class="w-12 mx-auto mb-4 opacity-50" alt="trophy">
+                            <h4 class="oswald font-bold text-xl uppercase italic mb-4">Grand Final</h4>
+                            <div class="text-sm space-y-2">
+                                <div id="final-t1" class="font-bold">Winner SF1</div>
+                                <div class="text-pink-600 font-black oswald text-2xl">VS</div>
+                                <div id="final-t2" class="font-bold">Winner SF2</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Champion -->
+                <div class="text-center">
+                    <div class="neon-box bg-gray-900/40 p-10 rounded-full w-48 h-48 mx-auto flex flex-col justify-center items-center border-dashed border-2">
+                        <span class="text-[10px] uppercase tracking-widest text-gray-500 font-bold">Champion</span>
+                        <div class="text-2xl font-black oswald uppercase italic mt-2 neon-text" id="grand-winner">TBD</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: SINGLE GAMES (Pingpong/Badminton) -->
+        <section>
+            <h3 class="text-2xl font-black oswald uppercase italic mb-8 border-l-4 border-blue-500 pl-4">Single Matches</h3>
+            <div id="single-matches-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Injected by JS -->
+            </div>
+        </section>
+
+        <!-- SECTION 3: SWIMMING RANKING -->
+        <section>
+            <h3 class="text-2xl font-black oswald uppercase italic mb-8 border-l-4 border-cyan-400 pl-4">Swimming Ranking</h3>
+            <div class="bg-gray-900/80 rounded-lg border border-white/5 overflow-hidden">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-white/5 text-gray-400 uppercase text-[10px] tracking-widest">
+                        <tr>
+                            <th class="p-4">Rank</th>
+                            <th class="p-4">Athlete</th>
+                            <th class="p-4 text-right">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="swimming-list" class="divide-y divide-white/5">
+                        <!-- Injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </div>
 
     <script>
-        // --- Supabase Configuration ---
         const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
         const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ១. មុខងារទាញទិន្នន័យហ្គេមកំពុងលេង (Active Match)
-        async function fetchRandomMatch() {
-            try {
-                // ទាញយកហ្គេមដែលមាន Status = 'Live'
-                const { data, error } = await supabaseClient
-                    .from('matches')
-                    .select('*')
-                    .limit(1); // ក្នុងឧទាហរណ៍នេះយើងយក ១ មកបង្ហាញ
+        async function fetchData() {
+            // ១. ទាញទិន្នន័យការប្រកួត
+            const { data: matches } = await supabaseClient.from('matches').select('*');
+            // ២. ទាញទិន្នន័យហែលទឹក
+            const { data: swimmers } = await supabaseClient.from('swimming_results').select('*').order('rank', { ascending: true });
 
-                if (data && data.length > 0) {
-                    const match = data[0];
-                    document.getElementById('player-a-name').innerText = match.player_a;
-                    document.getElementById('player-b-name').innerText = match.player_b;
-                    document.getElementById('live-score').innerText = `${match.score_a} - ${match.score_b}`;
-                    document.getElementById('start-time').innerText = match.start_time || '09:00 AM';
+            if(matches) {
+                renderHero(matches);
+                renderBracket(matches);
+                renderSingles(matches);
+            }
+            if(swimmers) renderSwimming(swimmers);
+        }
+
+        // បង្ហាញហ្គេមដែលកំពុង Live នៅលើ Hero Section
+        function renderHero(matches) {
+            const liveMatch = matches.find(m => m.status === 'Live') || matches[0];
+            if(liveMatch) {
+                document.getElementById('hero-team-a').innerText = liveMatch.team_a;
+                document.getElementById('hero-team-b').innerText = liveMatch.team_b;
+                document.getElementById('hero-score').innerText = `${liveMatch.score_a} : ${liveMatch.score_b}`;
+                document.getElementById('hero-sport').innerText = liveMatch.sport_name;
+                document.getElementById('hero-status').innerText = liveMatch.status;
+            }
+        }
+
+        // បង្ហាញ Tournament Bracket
+        function renderBracket(matches) {
+            matches.forEach(m => {
+                if(m.match_label === 'SF1') {
+                    document.getElementById('sf1-t1').innerText = m.team_a;
+                    document.getElementById('sf1-t2').innerText = m.team_b;
+                    document.getElementById('sf1-s1').innerText = m.score_a;
+                    document.getElementById('sf1-s2').innerText = m.score_b;
                 }
-            } catch (err) {
-                console.log("Error fetching match:", err);
-            }
+                if(m.match_label === 'SF2') {
+                    document.getElementById('sf2-t1').innerText = m.team_a;
+                    document.getElementById('sf2-t2').innerText = m.team_b;
+                    document.getElementById('sf2-s1').innerText = m.score_a;
+                    document.getElementById('sf2-s2').innerText = m.score_b;
+                }
+                if(m.match_label === 'Final') {
+                    document.getElementById('final-t1').innerText = m.team_a;
+                    document.getElementById('final-t2').innerText = m.team_b;
+                    if(m.status === 'Finished') {
+                        document.getElementById('grand-winner').innerText = m.score_a > m.score_b ? m.team_a : m.team_b;
+                    }
+                }
+            });
         }
 
-        // ២. មុខងារទាញបញ្ជីកីឡាករ (Players List)
-        async function fetchPlayers() {
-            try {
-                const { data: players, error } = await supabaseClient
-                    .from('players')
-                    .select('*');
-
-                if (error) throw error;
-
-                const grid = document.getElementById('players-grid');
-                grid.innerHTML = '';
-
-                players.forEach(player => {
-                    // លក្ខខណ្ឌ៖ បើចាញ់ (is_loser) ឱ្យទៅជាពណ៌ស្រអាប់ បើឈ្នះ (is_winner) ឱ្យមានរង្វង់បៃតង
-                    const statusClass = player.is_loser ? 'loser-card' : '';
-                    const imgClass = player.is_winner ? 'winner-ring' : '';
-
-                    const card = `
-                        <div class="bg-gray-100 p-4 rounded flex items-center gap-4 transition hover:shadow-md ${statusClass}">
-                            <div class="relative">
-                                <img src="${player.avatar_url || 'https://via.placeholder.com/80'}" 
-                                     class="w-16 h-16 rounded-full object-cover bg-white ${imgClass}">
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-lg uppercase oswald">${player.name}</h4>
-                                <p class="text-xs text-gray-500 uppercase font-bold">${player.role || 'Player'}</p>
-                            </div>
-                        </div>
-                    `;
-                    grid.innerHTML += card;
-                });
-            } catch (err) {
-                console.log("Error fetching players:", err);
-            }
+        // បង្ហាញហ្គេមឯកត្តជន
+        function renderSingles(matches) {
+            const singles = matches.filter(m => m.sport_name === 'Pingpong' || m.sport_name === 'Badminton');
+            const grid = document.getElementById('single-matches-grid');
+            grid.innerHTML = singles.map(m => `
+                <div class="bg-gray-900/50 p-6 rounded-xl border border-white/5 hover:border-blue-500/50 transition group">
+                    <div class="text-[10px] font-bold text-blue-500 uppercase mb-4">${m.sport_name}</div>
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-sm">${m.team_a}</div>
+                        <div class="oswald font-black text-xl group-hover:text-blue-500">${m.score_a} - ${m.score_b}</div>
+                        <div class="font-bold text-sm">${m.team_b}</div>
+                    </div>
+                </div>
+            `).join('');
         }
 
-        // ដំណើរការនៅពេលបើក Page ដំបូង
-        window.onload = () => {
-            fetchRandomMatch();
-            fetchPlayers();
-        };
+        // បង្ហាញតារាងហែលទឹក
+        function renderSwimming(swimmers) {
+            const list = document.getElementById('swimming-list');
+            list.innerHTML = swimmers.map(s => `
+                <tr class="hover:bg-white/5 transition">
+                    <td class="p-4 font-black oswald text-cyan-400">#${s.rank}</td>
+                    <td class="p-4 font-bold uppercase text-xs">${s.name}</td>
+                    <td class="p-4 text-right font-mono text-gray-400">${s.result_time}</td>
+                </tr>
+            `).join('');
+        }
+
+        window.onload = fetchData;
     </script>
 </body>
 </html>
