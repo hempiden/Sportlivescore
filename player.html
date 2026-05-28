@@ -1,1 +1,325 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - DHL Games Day</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --dhl-yellow: #FFCC00; --dhl-red: #D40511; }
+        body { background-color: #f3f4f6; color: #1a1a1a; font-family: 'Kantumruy Pro', sans-serif; }
+        .font-dhl { font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; }
+        
+        /* DHL Style Elements */
+        .bg-dhl-yellow { background-color: var(--dhl-yellow); }
+        .text-dhl-red { color: var(--dhl-red); }
+        .btn-dhl-red { background-color: var(--dhl-red); color: white; transition: 0.2s; }
+        .btn-dhl-red:hover { background-color: #b0040e; transform: translateY(-1px); }
+        
+        .sidebar-bg { background-color: #ffffff; border-right: 4px solid var(--dhl-yellow); }
+        .card-dhl { background: white; border-left: 6px solid var(--dhl-red); box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        
+        .drop-zone-active { border: 2px dashed var(--dhl-red); background: rgba(212, 5, 17, 0.05); }
 
+        /* ស្ទីលសម្រាប់រូបភាព Share (DHL Poster Style) */
+        #share-template {
+            width: 800px; height: 450px;
+            background-color: var(--dhl-yellow);
+            border: 12px solid white;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: fixed; left: -9999px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="p-4 bg-white border-b-4 border-[#FFCC00] flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div class="flex items-center gap-3">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/DHL_Logo.svg/1200px-DHL_Logo.svg.png" class="h-5 md:h-6" alt="DHL">
+            <div class="h-6 w-[2px] bg-gray-300 mx-2"></div>
+            <h1 class="font-dhl italic text-[#D40511] text-lg tracking-tighter">GAMES DAY ADMIN</h1>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="deleteSelectedPlayers()" id="delete-btn" class="hidden bg-black text-white px-4 py-1 rounded text-xs font-bold uppercase">Delete Selected</button>
+            <button onclick="location.reload()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-1 rounded text-xs font-bold uppercase border">Refresh</button>
+        </div>
+    </header>
+
+    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-0">
+        
+        <!-- Sidebar: Player Management -->
+        <aside class="lg:col-span-3 sidebar-bg p-6 overflow-y-auto max-h-screen">
+            <h2 class="font-dhl italic text-[#D40511] text-xl mb-6 border-b-2 border-[#FFCC00] pb-2">Player Management</h2>
+            
+            <!-- Add Player Form -->
+            <div class="space-y-3 mb-8">
+                <input type="text" id="new-player-name" placeholder="ឈ្មោះកីឡាករ/ក្រុម" class="w-full bg-gray-50 border border-gray-300 p-2 rounded text-sm focus:ring-2 focus:ring-[#FFCC00] outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="new-player-sport" class="bg-gray-50 border border-gray-300 p-2 rounded text-xs font-bold">
+                        <option value="Soccer">Soccer</option>
+                        <option value="Volleyball">Volleyball</option>
+                        <option value="Pingpong">Pingpong</option>
+                        <option value="Badminton">Badminton</option>
+                        <option value="Swimming">Swimming</option>
+                    </select>
+                    <button onclick="addNewPlayer()" class="btn-dhl-red font-dhl italic py-2 rounded text-xs">Add New</button>
+                </div>
+                <div class="relative">
+                    <input type="file" id="excel-upload" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+                    <button onclick="document.getElementById('excel-upload').click()" class="w-full border-2 border-dashed border-gray-300 py-2 rounded text-[10px] font-bold uppercase hover:bg-gray-50 text-gray-500">Upload Excel List</button>
+                </div>
+            </div>
+
+            <!-- Player List -->
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-[10px] uppercase font-black text-gray-400">Participants</span>
+                <label class="text-[10px] font-bold flex items-center gap-1 cursor-pointer text-gray-600">
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll()"> Select All
+                </label>
+            </div>
+            <div id="player-list" class="space-y-2 min-h-[200px]">
+                <!-- Players loaded here -->
+            </div>
+
+            <!-- Trash Zone -->
+            <div id="trash-zone" class="mt-10 p-6 border-2 border-dashed border-red-200 rounded-xl text-center text-red-300 transition bg-red-50/30">
+                <span class="text-[10px] uppercase font-black">Drag here to remove</span>
+            </div>
+        </aside>
+
+        <!-- Main Content: Match Management -->
+        <main class="lg:col-span-9 p-8 overflow-y-auto">
+            
+            <!-- Matching Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-12">
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-[#FFCC00]">
+                    <h4 class="text-[10px] font-black uppercase text-gray-400 mb-3">Soccer / Volleyball</h4>
+                    <button onclick="generateMatches('Soccer')" class="w-full bg-black text-white py-2 rounded text-xs font-dhl italic">Auto Random Team</button>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-[#FFCC00]">
+                    <h4 class="text-[10px] font-black uppercase text-gray-400 mb-3">Pingpong / Badminton</h4>
+                    <button onclick="generateMatches('Badminton')" class="w-full bg-black text-white py-2 rounded text-xs font-dhl italic">Lucky Draw Match</button>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-[#FFCC00]">
+                    <h4 class="text-[10px] font-black uppercase text-gray-400 mb-3">Swimming</h4>
+                    <button onclick="initSwimming()" class="w-full bg-black text-white py-2 rounded text-xs font-dhl italic">Start Ranking</button>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-[#D40511]">
+                    <h4 class="text-[10px] font-black uppercase text-gray-400 mb-3">System Action</h4>
+                    <button onclick="clearAllMatches()" class="w-full border-2 border-[#D40511] text-[#D40511] py-2 rounded text-xs font-dhl italic hover:bg-[#D40511] hover:text-white">Clear All</button>
+                </div>
+            </div>
+
+            <!-- Live Matches Grid -->
+            <h3 class="font-dhl italic text-2xl text-[#D40511] mb-6 border-l-8 border-[#FFCC00] pl-4">Live Match Scoring</h3>
+            <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Matches loaded here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Share Template (DHL Style) -->
+    <div id="share-template">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/DHL_Logo.svg/1200px-DHL_Logo.svg.png" class="h-10 mb-6">
+        <div class="text-black font-dhl text-5xl italic mb-2 tracking-tighter">MATCH RESULT</div>
+        <div id="share-sport" class="text-[#D40511] font-dhl text-2xl mb-12 tracking-[0.4em] italic">SOCCER</div>
+        <div class="flex items-center justify-center gap-12 w-full px-10">
+            <div id="share-t1" class="text-4xl font-dhl italic flex-1 text-right">TEAM A</div>
+            <div id="share-score" class="text-8xl font-dhl italic text-[#FFCC00] bg-black px-10 py-3">0 : 0</div>
+            <div id="share-t2" class="text-4xl font-dhl italic flex-1 text-left">TEAM B</div>
+        </div>
+        <div class="mt-16 text-xs text-black font-bold uppercase tracking-[0.3em] opacity-70">DHL Games Day • Excellence. Simply delivered.</div>
+    </div>
+
+    <script>
+        // --- Supabase Configuration ---
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // --- Player Management Logic ---
+
+        async function fetchPlayers() {
+            const { data, error } = await supabaseClient.from('participants').select('*').order('created_at', { ascending: false });
+            const list = document.getElementById('player-list');
+            list.innerHTML = '';
+            
+            data.forEach(p => {
+                const item = document.createElement('div');
+                item.className = "bg-gray-50 p-3 rounded flex items-center justify-between group cursor-move border border-gray-200 hover:border-[#FFCC00] hover:bg-white shadow-sm";
+                item.setAttribute('data-id', p.id);
+                item.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" class="player-checkbox" value="${p.id}" onchange="updateDeleteBtn()">
+                        <div>
+                            <div class="text-sm font-bold text-gray-800">${p.name}</div>
+                            <div class="text-[10px] text-[#D40511] uppercase font-black italic">${p.sport_type}</div>
+                        </div>
+                    </div>
+                    <span class="text-gray-300 group-hover:text-[#FFCC00]">⠿</span>
+                `;
+                list.appendChild(item);
+            });
+
+            new Sortable(list, {
+                group: 'players',
+                animation: 150,
+                onEnd: async (evt) => {
+                    if (evt.to.id === 'trash-zone') {
+                        const id = evt.item.getAttribute('data-id');
+                        await deletePlayer(id);
+                    }
+                }
+            });
+
+            new Sortable(document.getElementById('trash-zone'), {
+                group: 'players',
+                onAdd: (evt) => evt.item.remove()
+            });
+        }
+
+        async function addNewPlayer() {
+            const name = document.getElementById('new-player-name').value;
+            const sport = document.getElementById('new-player-sport').value;
+            if(!name) return;
+            await supabaseClient.from('participants').insert([{ name, sport_type: sport }]);
+            document.getElementById('new-player-name').value = '';
+            fetchPlayers();
+        }
+
+        async function handleExcelUpload(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = async (evt) => {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
+                const toInsert = rows.map(r => ({
+                    name: r.Name || r.name,
+                    sport_type: r.Sport || r.sport || document.getElementById('new-player-sport').value
+                }));
+                await supabaseClient.from('participants').insert(toInsert);
+                fetchPlayers();
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        async function deletePlayer(id) {
+            await supabaseClient.from('participants').delete().eq('id', id);
+            fetchPlayers();
+        }
+
+        async function deleteSelectedPlayers() {
+            const checked = Array.from(document.querySelectorAll('.player-checkbox:checked')).map(cb => cb.value);
+            if(confirm(`លុបកីឡាករចំនួន ${checked.length} នាក់?`)) {
+                await supabaseClient.from('participants').delete().in('id', checked);
+                fetchPlayers();
+            }
+        }
+
+        function updateDeleteBtn() {
+            const checked = document.querySelectorAll('.player-checkbox:checked').length;
+            document.getElementById('delete-btn').classList.toggle('hidden', checked === 0);
+        }
+
+        function toggleSelectAll() {
+            const isChecked = document.getElementById('select-all').checked;
+            document.querySelectorAll('.player-checkbox').forEach(cb => cb.checked = isChecked);
+            updateDeleteBtn();
+        }
+
+        // --- Match Management Logic ---
+
+        async function generateMatches(sport) {
+            const { data: players } = await supabaseClient.from('participants').select('name').eq('sport_type', sport);
+            if(players.length < 2) return alert("ត្រូវការកីឡាករយ៉ាងតិច ២ នាក់!");
+            const shuffled = players.sort(() => 0.5 - Math.random());
+            const matches = [];
+            for(let i = 0; i < shuffled.length; i += 2) {
+                if(shuffled[i+1]) {
+                    matches.push({
+                        sport_name: sport, team_a: shuffled[i].name, team_b: shuffled[i+1].name,
+                        score_a: 0, score_b: 0, status: 'Live'
+                    });
+                }
+            }
+            await supabaseClient.from('matches').insert(matches);
+            fetchMatches();
+        }
+
+        async function fetchMatches() {
+            const { data } = await supabaseClient.from('matches').select('*').order('created_at', { ascending: false });
+            const grid = document.getElementById('matches-grid');
+            grid.innerHTML = '';
+
+            data.forEach(m => {
+                const card = document.createElement('div');
+                card.className = "card-dhl p-6 rounded-xl";
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-[10px] font-black uppercase text-[#D40511] italic tracking-widest">${m.sport_name}</span>
+                        <span class="text-[10px] font-bold text-gray-400">${new Date(m.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="flex-1 text-right font-dhl italic text-sm">${m.team_a}</div>
+                        <div class="flex gap-2">
+                            <input type="number" value="${m.score_a}" onchange="updateScore(${m.id}, this.value, null)" class="w-12 bg-gray-100 border-none rounded text-center font-dhl italic text-xl p-1 focus:ring-2 focus:ring-[#FFCC00]">
+                            <input type="number" value="${m.score_b}" onchange="updateScore(${m.id}, null, this.value)" class="w-12 bg-gray-100 border-none rounded text-center font-dhl italic text-xl p-1 focus:ring-2 focus:ring-[#FFCC00]">
+                        </div>
+                        <div class="flex-1 text-left font-dhl italic text-sm">${m.team_b}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="downloadResult(${m.id})" class="flex-1 bg-[#FFCC00] hover:bg-yellow-500 text-black py-2 rounded text-[10px] font-black uppercase italic tracking-widest">Download Image</button>
+                        <button onclick="finishMatch(${m.id})" class="bg-gray-100 text-gray-400 px-4 py-2 rounded text-[10px] font-bold uppercase hover:bg-red-50 hover:text-red-500">End</button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        async function updateScore(id, sa, sb) {
+            const updateData = {};
+            if(sa !== null) updateData.score_a = sa;
+            if(sb !== null) updateData.score_b = sb;
+            await supabaseClient.from('matches').update(updateData).eq('id', id);
+        }
+
+        async function downloadResult(id) {
+            const { data: m } = await supabaseClient.from('matches').select('*').eq('id', id).single();
+            document.getElementById('share-sport').innerText = m.sport_name;
+            document.getElementById('share-t1').innerText = m.team_a;
+            document.getElementById('share-t2').innerText = m.team_b;
+            document.getElementById('share-score').innerText = `${m.score_a} : ${m.score_b}`;
+
+            const template = document.getElementById('share-template');
+            html2canvas(template, { scale: 2 }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `DHL_Result_${m.team_a}_vs_${m.team_b}.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            });
+        }
+
+        async function clearAllMatches() {
+            if(confirm("តើអ្នកចង់លុបការប្រកួតទាំងអស់មែនទេ?")) {
+                await supabaseClient.from('matches').delete().neq('id', 0);
+                fetchMatches();
+            }
+        }
+
+        window.onload = () => {
+            fetchPlayers();
+            fetchMatches();
+        };
+    </script>
+</body>
+</html>
