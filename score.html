@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoring Panel - DHL Games Day</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Kantumruy+Pro:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --dhl-yellow: #FFCC00; --dhl-red: #D40511; }
+        body { background-color: #f3f4f6; font-family: 'Kantumruy Pro', sans-serif; }
+        .font-dhl { font-family: 'Inter', sans-serif; font-weight: 900; text-transform: uppercase; }
+        .bg-dhl-yellow { background-color: var(--dhl-yellow); }
+        .btn-update { background-color: #22c55e; color: white; } /* Green for success/update */
+        .btn-finish { background-color: #1a1a1a; color: white; } /* Black for finish */
+        .score-input { font-family: 'Inter', sans-serif; font-weight: 900; font-size: 2rem; }
+    </style>
+</head>
+<body class="min-h-screen pb-20">
+
+    <!-- Header -->
+    <header class="p-4 bg-white border-b-4 border-[#FFCC00] flex justify-between items-center sticky top-0 z-50 shadow-md">
+        <div class="flex items-center gap-3">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/DHL_Logo.svg/1200px-DHL_Logo.svg.png" class="h-5" alt="DHL">
+            <h1 class="font-dhl italic text-[#D40511] text-sm tracking-tighter">SCORING PANEL</h1>
+        </div>
+        <div id="connection-status" class="text-[10px] font-bold text-green-500 flex items-center gap-1">
+            <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> ONLINE
+        </div>
+    </header>
+
+    <!-- Sport Filter Tabs -->
+    <div class="bg-white shadow-sm mb-6 overflow-x-auto whitespace-nowrap border-b">
+        <div class="flex p-2 gap-2 container mx-auto">
+            <button onclick="filterMatches('All')" class="sport-tab px-6 py-2 rounded-full text-xs font-bold bg-black text-white">All</button>
+            <button onclick="filterMatches('Soccer')" class="sport-tab px-6 py-2 rounded-full text-xs font-bold bg-gray-100">Soccer</button>
+            <button onclick="filterMatches('Volleyball')" class="sport-tab px-6 py-2 rounded-full text-xs font-bold bg-gray-100">Volleyball</button>
+            <button onclick="filterMatches('Pingpong')" class="sport-tab px-6 py-2 rounded-full text-xs font-bold bg-gray-100">Pingpong</button>
+            <button onclick="filterMatches('Badminton')" class="sport-tab px-6 py-2 rounded-full text-xs font-bold bg-gray-100">Badminton</button>
+            <button onclick="filterMatches('Swimming')" class="sport-tab px-6 py-2 rounded-full text-xs font-bold bg-gray-100">Swimming</button>
+        </div>
+    </div>
+
+    <main class="container mx-auto px-4">
+        
+        <!-- Matches List Container -->
+        <div id="scoring-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Match cards will be loaded here -->
+            <div class="col-span-full text-center py-20 text-gray-400 italic">
+                កំពុងទាញទិន្នន័យការប្រកួត...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer Info -->
+    <footer class="fixed bottom-0 w-full bg-white border-t p-3 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        DHL Games Day Scoring System • Excellence. Simply delivered.
+    </footer>
+
+    <script>
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentSport = 'All';
+
+        // ១. មុខងារទាញទិន្នន័យការប្រកួត
+        async function fetchMatches() {
+            let query = supabaseClient.from('matches').select('*').eq('status', 'Live');
+            
+            if (currentSport !== 'All') {
+                query = query.eq('sport_name', currentSport);
+            }
+
+            const { data: matches, error } = await query.order('created_at', { ascending: false });
+
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            renderMatches(matches);
+        }
+
+        // ២. បង្ហាញកាតបញ្ចូលពិន្ទុ
+        function renderMatches(matches) {
+            const container = document.getElementById('scoring-container');
+            
+            if (matches.length === 0) {
+                container.innerHTML = `<div class="col-span-full text-center py-20 text-gray-400">មិនមានការប្រកួត ${currentSport} កំពុងដំណើរការឡើយ។</div>`;
+                return;
+            }
+
+            container.innerHTML = matches.map(m => `
+                <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-t-8 border-[#FFCC00]">
+                    <div class="p-4 bg-gray-50 flex justify-between items-center border-b">
+                        <span class="font-dhl italic text-[#D40511] text-xs">${m.sport_name}</span>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">${m.match_label || 'Regular Match'}</span>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="flex items-center justify-between gap-4 mb-8">
+                            <!-- Team A -->
+                            <div class="flex-1 text-center">
+                                <div class="text-xs font-bold text-gray-500 uppercase mb-2 truncate">${m.team_a}</div>
+                                <input type="number" id="score-a-${m.id}" value="${m.score_a}" 
+                                    class="score-input w-20 h-20 text-center bg-gray-100 rounded-xl border-2 border-transparent focus:border-[#FFCC00] focus:bg-white outline-none">
+                            </div>
+
+                            <div class="font-dhl text-2xl text-gray-300 italic">:</div>
+
+                            <!-- Team B -->
+                            <div class="flex-1 text-center">
+                                <div class="text-xs font-bold text-gray-500 uppercase mb-2 truncate">${m.team_b}</div>
+                                <input type="number" id="score-b-${m.id}" value="${m.score_b}" 
+                                    class="score-input w-20 h-20 text-center bg-gray-100 rounded-xl border-2 border-transparent focus:border-[#FFCC00] focus:bg-white outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button onclick="updateScore(${m.id})" class="flex-1 btn-update py-4 rounded-xl font-dhl italic text-sm shadow-md active:scale-95 transition">
+                                Update Score
+                            </button>
+                            <button onclick="finishMatch(${m.id})" class="btn-finish px-6 rounded-xl font-dhl italic text-sm shadow-md active:scale-95 transition">
+                                Finish
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ៣. មុខងារ Update ពិន្ទុទៅកាន់ Supabase
+        async function updateScore(matchId) {
+            const scoreA = document.getElementById(`score-a-${matchId}`).value;
+            const scoreB = document.getElementById(`score-b-${matchId}`).value;
+
+            const { error } = await supabaseClient
+                .from('matches')
+                .update({ score_a: scoreA, score_b: scoreB })
+                .eq('id', matchId);
+
+            if (error) {
+                alert("Error updating score: " + error.message);
+            } else {
+                // បង្ហាញ Feedback តូចមួយ
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = "SAVED! ✓";
+                btn.style.backgroundColor = "#15803d";
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.style.backgroundColor = "#22c55e";
+                }, 1500);
+            }
+        }
+
+        // ៤. មុខងារបញ្ចប់ការប្រកួត
+        async function finishMatch(matchId) {
+            if (!confirm("តើអ្នកពិតជាចង់បញ្ចប់ការប្រកួតនេះមែនទេ? វានឹងលែងបង្ហាញក្នុងបញ្ជីបញ្ចូលពិន្ទុទៀតហើយ។")) return;
+
+            const { error } = await supabaseClient
+                .from('matches')
+                .update({ status: 'Finished' })
+                .eq('id', matchId);
+
+            if (error) {
+                alert("Error: " + error.message);
+            } else {
+                fetchMatches(); // Refresh list
+            }
+        }
+
+        // ៥. មុខងារ Filter តាមប្រភេទកីឡា
+        function filterMatches(sport) {
+            currentSport = sport;
+            
+            // Update UI Tabs
+            document.querySelectorAll('.sport-tab').forEach(tab => {
+                tab.classList.remove('bg-black', 'text-white');
+                tab.classList.add('bg-gray-100');
+                if (tab.innerText === sport) {
+                    tab.classList.remove('bg-gray-100');
+                    tab.classList.add('bg-black', 'text-white');
+                }
+            });
+
+            fetchMatches();
+        }
+
+        // ដំណើរការដំបូង
+        window.onload = fetchMatches;
+
+        // (Optional) Real-time update: ទាញទិន្នន័យរៀងរាល់ ៣០ វិនាទី ក្រែងលោមាន Admin ផ្សេងបង្កើតហ្គេមថ្មី
+        setInterval(fetchMatches, 30000);
+
+    </script>
+</body>
+</html>
